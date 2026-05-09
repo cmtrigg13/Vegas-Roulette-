@@ -61,6 +61,10 @@ button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline
 .chip-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%;}
 .chip-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;-webkit-user-select:none;user-select:none;}
 .chip-lbl{font-size:8px;color:#4a4a6a;}.chip-item.sel .chip-lbl{color:#a0a0ff;}.chip-item.dim{opacity:0.25;pointer-events:none;}
+.remove-bet-btn{width:100%;height:28px;margin-top:3px;border-radius:7px;border:0.5px solid #3a2a2a;background:rgba(80,20,20,0.5);color:#c06060;font-size:9px;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:background .15s;}
+.remove-bet-btn:active{background:rgba(120,30,30,0.7);}
+.add-tokens-btn{width:100%;height:28px;margin-top:5px;border-radius:7px;border:0.5px solid #1a3a1a;background:rgba(20,70,20,0.5);color:#60c060;font-size:9px;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:background .15s;}
+.add-tokens-btn:active{background:rgba(30,100,30,0.7);}
 
 /* Right column: board */
 .right-col{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
@@ -359,6 +363,8 @@ button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline
         <div class="chip-section">
           <div class="chip-section-lbl">Chip Value</div>
           <div class="chip-grid" id="chipBar"></div>
+          <button class="add-tokens-btn" id="addTokensBtn">▶ Watch Ad — Add $20</button>
+          <button class="remove-bet-btn" id="removeBetBtn">↩ Remove Last Bet</button>
         </div>
       </div>
       <div class="right-col">
@@ -473,6 +479,7 @@ const CHIPS=[
   {val:5,  main:'#991b1b',rim:'#fca5a5',seg:'#fecaca',label:'$5'},
   {val:10, main:'#0a6e4a',rim:'#6ee7b7',seg:'#a7f3d0',label:'$10'},
   {val:20, main:'#1e3a8a',rim:'#93c5fd',seg:'#bfdbfe',label:'$20'},
+  {val:50, main:'#7c2d8a',rim:'#e879f9',seg:'#f5d0fe',label:'$50'},
   {val:100,main:'#78350f',rim:'#fcd34d',seg:'#fde68a',label:'$100'},
 ];
 const ROWS=[];for(let k=0;k<12;k++)ROWS.push([3*k+1,3*k+2,3*k+3]);
@@ -484,6 +491,7 @@ const SM=136,BIG=290;
 let balance=20;
 let selChip=1;
 let bets={};
+let betHistory=[]; // stack of {key, amount} for undo
 let spinning=false;
 let wAng=0,bAng=-Math.PI/2;
 let spinHistory=JSON.parse(localStorage.getItem('vr_history')||'[]');
@@ -785,7 +793,8 @@ function resolveResult(res){
   spinHistory.unshift({result:res,color:col,net,bet:totalBetAmt,ts:Date.now()});
   save();
   setResult(`${col} ${res} — ${net>=0?'+':''}$${net}`,net>=0?'res-win':'res-lose');
-  bets={};document.querySelectorAll('.placed').forEach(p=>p.remove());
+  bets={};betHistory=[];
+  document.querySelectorAll('.placed').forEach(p=>p.remove());
   buildChipBar();
 
   if(net>0){
@@ -850,9 +859,12 @@ function placeBet(key,x,y,cw,ch2,tbl){
   if(others+cur+selChip>balance){document.getElementById('bustMsg').style.display='flex';return;}
   document.getElementById('bustMsg').style.display='none';
   playChip();haptic('chip');
+
+  // Track this placement for undo
+  betHistory.push({key, amount:selChip, x, y, cw, ch2});
+
   if(bets[key]){
     bets[key].amount+=selChip;
-    // Re-render chip showing new stacked total
     const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
     if(el){const {sz,svg}=pChipSVG(chip,cw,ch2,bets[key].amount);el.innerHTML=svg;}
     updateBalance();return;
@@ -862,6 +874,33 @@ function placeBet(key,x,y,cw,ch2,tbl){
   const div=document.createElement('div');div.className='placed';div.dataset.bk=key;
   div.style.cssText=`left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px;`;
   div.innerHTML=svg;tbl.appendChild(div);
+  updateBalance();
+}
+
+/* ── REMOVE LAST BET ── */
+function removeLastBet(){
+  if(!betHistory.length)return;
+  const last=betHistory.pop();
+  const {key,amount,cw,ch2}=last;
+  if(!bets[key])return;
+  bets[key].amount-=amount;
+  if(bets[key].amount<=0){
+    // Remove chip entirely
+    delete bets[key];
+    const tbl=document.getElementById('rt2');
+    const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
+    if(el)el.remove();
+  } else {
+    // Update chip label to new lower amount
+    const tbl=document.getElementById('rt2');
+    const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
+    if(el){
+      const chip=bets[key].chip||getChip();
+      const {sz,svg}=pChipSVG(chip,cw,ch2,bets[key].amount);
+      el.innerHTML=svg;
+    }
+  }
+  document.getElementById('bustMsg').style.display='none';
   updateBalance();
 }
 
@@ -967,7 +1006,8 @@ document.getElementById('ag-watch-btn').onclick=()=>{
   setTimeout(()=>{
     balance=20;updateBalance();save();haptic('win');playWin(20);
     btn.textContent='▶  Watch Ad — Get $20';btn.disabled=false;
-    bets={};setResult('Reloaded! Place your bets.','res-win');showScreen('game');
+    bets={};betHistory=[];
+    setResult('Reloaded! Place your bets.','res-win');showScreen('game');
   },2000);
 };
 document.getElementById('ag-later').onclick=()=>showScreen('game');
@@ -977,12 +1017,32 @@ document.querySelectorAll('.tog').forEach(tog=>{
   tog.onclick=()=>{const key=tog.dataset.key;settings[key]=!settings[key];tog.className='tog '+(settings[key]?'on':'off');save();haptic('chip');};
 });
 function syncToggles(){Object.keys(settings).forEach(k=>{const el=document.querySelector(`.tog[data-key="${k}"]`);if(el)el.className='tog '+(settings[k]?'on':'off');});}
-document.getElementById('btn-settings').onclick=()=>showScreen('settings');
-document.getElementById('btn-settings-back').onclick=()=>showScreen('game');
+/* ── ADD TOKENS VIA AD ── */
+function addTokensAd(){
+  const btn=document.getElementById('addTokensBtn');
+  const orig=btn.textContent;
+  btn.textContent='⏳ Loading ad...';
+  btn.style.pointerEvents='none';
+  setTimeout(()=>{
+    balance+=20;
+    updateBalance();
+    save();
+    haptic('win');
+    playWin(20);
+    btn.textContent=orig;
+    btn.style.pointerEvents='';
+    buildChipBar();
+  },2000);
+}
+
+document.getElementById('addTokensBtn').onclick=()=>addTokensAd();
+document.getElementById('removeBetBtn').onclick=()=>removeLastBet();
+document.getElementById('btn-settings').onclick=()=>showScreen('settings');document.getElementById('btn-settings-back').onclick=()=>showScreen('game');
 document.getElementById('st-daily').onclick=()=>openDaily();
 document.getElementById('st-history').onclick=()=>{buildHistory();showScreen('history');};
 document.getElementById('btn-history-back').onclick=()=>showScreen('settings');
-document.getElementById('st-reset').onclick=()=>{balance=20;bets={};updateBalance();save();document.querySelectorAll('.placed').forEach(p=>p.remove());setResult('Balance reset to $20.','res-neutral');showScreen('game');};
+document.getElementById('st-reset').onclick=()=>{balance=20;bets={};betHistory=[];
+updateBalance();save();document.querySelectorAll('.placed').forEach(p=>p.remove());setResult('Balance reset to $20.','res-neutral');showScreen('game');};
 
 /* ── SPIN HISTORY ── */
 function buildHistory(){
