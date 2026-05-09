@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Vegas Roulette">
 <meta name="theme-color" content="#05030f">
 <link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&display=swap" rel="stylesheet">
 <title>Vegas Roulette</title>
 <!-- ═══════════════════════════════════════════════
      ADSENSE — paste your Publisher ID here when approved
@@ -36,9 +37,9 @@ button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline
 
 /* Header */
 .hdr{position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:44px 16px 10px;border-bottom:0.5px solid rgba(255,255,255,0.07);background:linear-gradient(180deg,rgba(2,1,10,0.65) 0%,rgba(4,2,14,0.35) 100%);flex-shrink:0;}
-.hdr-title{font-size:14px;font-weight:600;color:#d0d0f0;letter-spacing:.5px;}
-.hdr-right{display:flex;align-items:center;gap:12px;}
-.hdr-bal{font-size:12px;color:#5a5a8a;}.hdr-bal b{color:#9090ff;font-weight:600;}
+.hdr-title{font-size:22px;font-weight:400;color:#e8d5a0;letter-spacing:1px;font-family:'Abril Fatface',serif;}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.hdr-bal{font-size:11px;color:#5a5a8a;font-family:'Abril Fatface',serif;}.hdr-bal b{color:#9090ff;font-size:18px;letter-spacing:.5px;}
 .hdr-ico{font-size:18px;cursor:pointer;color:#4a4a7a;padding:4px;}
 
 .result-row{position:relative;z-index:10;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;background:rgba(4,3,14,0.7);flex-shrink:0;}
@@ -339,11 +340,10 @@ button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline
       <span class="hdr-title">Vegas Roulette</span>
       <div class="hdr-right">
         <span class="hdr-bal">Balance <b id="balDisplay">$20.00</b></span>
-        <span class="hdr-ico" id="btn-daily">🎁</span>
         <span class="hdr-ico" id="btn-settings">⚙️</span>
       </div>
     </div>
-    <div class="result-row"><span id="resultTxt" class="res-neutral">select chip · tap board · pull wheel</span></div>
+    <div class="result-row"><span id="resultTxt" class="res-neutral"></span></div>
     <div class="bust-msg" id="bustMsg">⚠ Bet exceeds balance</div>
 
     <div class="game-area">
@@ -439,6 +439,7 @@ button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline
       <div class="st-row"><div class="st-left"><div class="st-ico">📳</div><div><div class="st-lbl">Haptic Feedback</div><div class="st-desc">Vibration on spin &amp; win</div></div></div><div class="tog on" id="tog-haptic" data-key="haptic"></div></div>
       <div class="st-row"><div class="st-left"><div class="st-ico">🎵</div><div><div class="st-lbl">Background Music</div><div class="st-desc">Ambient casino atmosphere</div></div></div><div class="tog off" id="tog-music" data-key="music"></div></div>
       <div class="st-section">Game</div>
+      <div class="st-row" id="st-daily"><div class="st-left"><div class="st-ico">🎁</div><div><div class="st-lbl">Daily Bonus</div><div class="st-desc">Claim free $20 every 24 hours</div></div></div><span class="st-chev">›</span></div>
       <div class="st-row" id="st-history"><div class="st-left"><div class="st-ico">📊</div><div><div class="st-lbl">Spin History</div><div class="st-desc">View your recent spins</div></div></div><span class="st-chev">›</span></div>
       <div class="st-row" id="st-reset"><div class="st-left"><div class="st-ico">🔄</div><div><div class="st-lbl">Reset Balance to $20</div><div class="st-desc">Start fresh</div></div></div><span class="st-chev">›</span></div>
       <div class="st-section">About</div>
@@ -480,7 +481,7 @@ const WOOD_RATIO=0.045;
 const SM=136,BIG=290;
 
 /* ── STATE ── */
-let balance=parseFloat(localStorage.getItem('vr_balance')||'20');
+let balance=20;
 let selChip=1;
 let bets={};
 let spinning=false;
@@ -497,13 +498,127 @@ function save(){localStorage.setItem('vr_balance',balance);localStorage.setItem(
 
 /* ── AUDIO (Web Audio API — no files needed) ── */
 let audioCtx=null;
-function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
-function playTone(freq,type,duration,gain=0.3,delay=0){if(!settings.sfx)return;try{const ctx=getAudio(),osc=ctx.createOscillator(),vol=ctx.createGain();osc.connect(vol);vol.connect(ctx.destination);osc.type=type;osc.frequency.value=freq;vol.gain.setValueAtTime(gain,ctx.currentTime+delay);vol.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+duration);osc.start(ctx.currentTime+delay);osc.stop(ctx.currentTime+delay+duration);}catch(e){}}
-function playChip(){playTone(900,'square',0.04,0.15);}
-function playSpinStart(){playTone(200,'sawtooth',0.3,0.2);playTone(180,'sawtooth',0.3,0.15,0.05);}
-function playBallRoll(){for(let i=0;i<8;i++)playTone(300+i*40,'sine',0.08,0.06,i*0.1);}
-function playWin(amt){const notes=amt>50?[523,659,784,1047]:[523,659,784];notes.forEach((f,i)=>playTone(f,'sine',0.4,0.3,i*0.12));}
-function playLose(){playTone(220,'sawtooth',0.3,0.2);playTone(180,'sawtooth',0.4,0.2,0.15);}
+function getAudio(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  return audioCtx;
+}
+
+function mkNoise(c,start,dur,gainVal,filterFreq=2000){
+  try{
+    const buf=c.createBuffer(1,Math.ceil(c.sampleRate*dur),c.sampleRate);
+    const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    const src=c.createBufferSource();src.buffer=buf;
+    const flt=c.createBiquadFilter();flt.type='bandpass';flt.frequency.value=filterFreq;flt.Q.value=0.8;
+    const g=c.createGain();
+    src.connect(flt);flt.connect(g);g.connect(c.destination);
+    g.gain.setValueAtTime(gainVal,c.currentTime+start);
+    g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+start+dur);
+    src.start(c.currentTime+start);src.stop(c.currentTime+start+dur+0.05);
+  }catch(e){}
+}
+
+function mkOsc(c,freq,type,start,dur,gainVal){
+  try{
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(gainVal,c.currentTime+start);
+    g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+start+dur);
+    o.start(c.currentTime+start);o.stop(c.currentTime+start+dur+0.05);
+  }catch(e){}
+}
+
+/* ── CHIP CLICK — Profile 2 crisp snap ── */
+function playChip(){
+  if(!settings.sfx)return;
+  try{
+    const c=getAudio();
+    mkNoise(c,0,0.008,0.6,4000);
+    mkNoise(c,0,0.02,0.3,1500);
+    mkOsc(c,600,'sine',0,0.015,0.2);
+    mkOsc(c,1200,'sine',0.002,0.012,0.12);
+  }catch(e){}
+}
+
+/* ── SPIN SOUND — ball clicks only, decelerating ── */
+/* ── CONTINUOUS SPIN SOUND — runs for full duration, decelerates with wheel ── */
+let spinNodes=null;
+
+function playSpinStart(duration){
+  if(!settings.sfx)return;
+  try{
+    const c=getAudio();
+    // Ball clicks only — no rumble, no tone. Impulses slow as wheel decelerates.
+    const ballBuf=c.createBuffer(1,Math.ceil(c.sampleRate*duration),c.sampleRate);
+    const bd=ballBuf.getChannelData(0);
+    let pos=0,interval=0.042;
+    while(pos<duration){
+      const sample=Math.floor(pos*c.sampleRate);
+      const tickLen=Math.floor(0.016*c.sampleRate);
+      for(let j=0;j<tickLen&&sample+j<bd.length;j++){
+        bd[sample+j]=(Math.random()*2-1)*Math.exp(-j/(tickLen*0.25));
+      }
+      pos+=interval;
+      interval=Math.min(0.40,interval*(1+0.042*(pos/duration)*4));
+    }
+    const ballSrc=c.createBufferSource();ballSrc.buffer=ballBuf;
+    const ballFilt=c.createBiquadFilter();
+    ballFilt.type='bandpass';
+    ballFilt.frequency.setValueAtTime(2400,c.currentTime);
+    ballFilt.frequency.linearRampToValueAtTime(1600,c.currentTime+duration*0.6);
+    ballFilt.frequency.linearRampToValueAtTime(1000,c.currentTime+duration);
+    ballFilt.Q.value=1.4;
+    const ballGain=c.createGain();
+    ballGain.gain.setValueAtTime(0.30,c.currentTime);
+    ballGain.gain.linearRampToValueAtTime(0.35,c.currentTime+duration*0.25);
+    ballGain.gain.linearRampToValueAtTime(0.20,c.currentTime+duration*0.75);
+    ballGain.gain.linearRampToValueAtTime(0.06,c.currentTime+duration);
+    ballSrc.connect(ballFilt);ballFilt.connect(ballGain);ballGain.connect(c.destination);
+    ballSrc.start(c.currentTime);ballSrc.stop(c.currentTime+duration+0.1);
+    spinNodes={ballSrc};
+  }catch(e){}
+}
+
+function stopSpinSound(){
+  if(!spinNodes)return;
+  try{const c=getAudio();[spinNodes.ballSrc].forEach(n=>{try{n.stop(c.currentTime+0.1);}catch(e){}});}catch(e){}
+  spinNodes=null;
+}
+
+/* ── BALL ROLL — kept as no-op since playSpinStart now handles it ── */
+function playBallRoll(){}
+
+/* ── WIN — Profile 1 warm fanfare + coin cascade ── */
+function playWin(amt){
+  if(!settings.sfx)return;
+  try{
+    const c=getAudio();
+    const melody=amt>20?[523,659,784,880,1047]:[523,659,784];
+    melody.forEach((f,i)=>{
+      mkOsc(c,f,'triangle',i*0.13,0.35,0.28);
+      mkOsc(c,f*0.5,'sine',i*0.13,0.35,0.14);
+    });
+    // Coin cascade
+    for(let i=0;i<8;i++){
+      mkNoise(c,0.5+i*0.07,0.04,0.15,2500+Math.random()*500);
+      mkOsc(c,1200+Math.random()*300,'sine',0.5+i*0.07,0.04,0.1);
+    }
+    // Sustain chord
+    [523,659,784].forEach(f=>mkOsc(c,f,'sine',melody.length*0.13+0.35,0.6,0.1));
+  }catch(e){}
+}
+
+/* ── LOSE — soft descending tone ── */
+function playLose(){
+  if(!settings.sfx)return;
+  try{
+    const c=getAudio();
+    mkOsc(c,280,'triangle',0,0.4,0.2);
+    mkOsc(c,220,'triangle',0.15,0.4,0.15);
+    mkNoise(c,0,0.15,0.08,400);
+  }catch(e){}
+}
 
 /* ── HAPTICS ── */
 function haptic(type){if(!settings.haptic||!navigator.vibrate)return;if(type==='chip')navigator.vibrate(12);if(type==='spin')navigator.vibrate([30,15,30,15,60]);if(type==='win')navigator.vibrate([50,30,50,30,100,30,150]);if(type==='lose')navigator.vibrate(80);}
@@ -605,24 +720,40 @@ function doSpin(){
   if(tb===0){setResult('place a bet first!','res-neutral');return;}
   if(tb>balance){document.getElementById('bustMsg').style.display='flex';return;}
   document.getElementById('bustMsg').style.display='none';
-  spinning=true;haptic('spin');playSpinStart();playBallRoll();
+  spinning=true;haptic('spin');playBallRoll();
   const ov=document.getElementById('spinOverlay');ov.classList.add('active');initBigWheel();
-  const DUR=7200,wd=(12+Math.random()*4)*Math.PI*2,bd=-((16+Math.random()*6)*Math.PI*2+Math.random()*Math.PI*2);
+
+  // Pick winner BEFORE animating so ball can land precisely centered on that pocket
+  const all=[0,'00',1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
+  const spinResult=all[Math.floor(Math.random()*38)];
+  const winIdx=WO.indexOf(spinResult);
+  const tot=WO.length;
+  const DUR=7200;
+  playSpinStart(DUR/1000);
+  const wDelta=(12+Math.random()*4)*Math.PI*2;
+  const wAngFinal=wAng+wDelta;
+  // Centre of winning segment in the absolute frame when wheel stops
+  const segCentre=wAngFinal+((winIdx+0.5)/tot)*Math.PI*2-Math.PI/2;
+  // Ball travels counter-clockwise; choose revolutions then snap to segCentre
+  const rawEnd=bAng-((16+Math.random()*6)*Math.PI*2);
+  let diff=((segCentre-rawEnd)%(Math.PI*2));
+  if(diff>Math.PI)diff-=Math.PI*2;
+  if(diff<-Math.PI)diff+=Math.PI*2;
+  const bDelta=(rawEnd+diff)-bAng;
+
   const sw=wAng,sb=bAng,t0=performance.now();
   function frame(now){
     const t=Math.min((now-t0)/DUR,1),e=1-Math.pow(1-t,3);
-    wAng=sw+wd*e;bAng=sb+bd*e;
+    wAng=sw+wDelta*e;bAng=sb+bDelta*e;
     drawW(document.getElementById('bigWc').getContext('2d'),BIG,wAng);mvBigBall(bAng);
     drawW(document.getElementById('smWc').getContext('2d'),SM,wAng);mvSmBall(bAng);
     if(t<1)requestAnimationFrame(frame);
-    else setTimeout(()=>{ov.classList.remove('active');spinning=false;resolveResult();},1300);
+    else setTimeout(()=>{ov.classList.remove('active');spinning=false;resolveResult(spinResult);},1300);
   }
   requestAnimationFrame(frame);
 }
 
-function resolveResult(){
-  const all=[0,'00',1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
-  const res=all[Math.floor(Math.random()*38)];
+function resolveResult(res){
   const isR=typeof res==='number'&&RED.has(res),isG=res===0||res==='00';
   const col=isG?'Green':isR?'Red':'Black';
   let totalWin=0,totalBetAmt=0,biggestPayout=0;
@@ -669,7 +800,10 @@ function resolveResult(){
 }
 
 function setResult(txt,cls){const el=document.getElementById('resultTxt');el.textContent=txt;el.className=cls;}
-function updateBalance(){document.getElementById('balDisplay').textContent='$'+balance.toFixed(2);}
+function updateBalance(){
+  const remaining=balance-totalBet();
+  document.getElementById('balDisplay').textContent='$'+Math.max(0,remaining).toFixed(2);
+}
 
 function showWinToast(payout,col,res){
   const shell=document.querySelector('#screen-game .shell');
@@ -686,10 +820,13 @@ function chipSVG(ch,sz,isSel){
   return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}">${rg}<circle cx="${cx}" cy="${cy}" r="${r}" fill="${ch.main}"/>${s}<circle cx="${cx}" cy="${cy}" r="${iR}" fill="${ch.main}" stroke="${ch.rim}" stroke-width="1.8"/><text x="${cx}" y="${cy+sz*0.08}" text-anchor="middle" font-size="${sz*0.24}" font-weight="700" fill="white" font-family="Arial">${ch.label}</text></svg>`;
 }
 
-function pChipSVG(ch,cw,ch2){
+function pChipSVG(ch,cw,ch2,amount){
   const sz=Math.min(cw,ch2)*0.88,cx=sz/2,cy=sz/2,r=sz/2-1,sa=Math.PI*2/8,oR=r,iR=r*0.68;let s='';
   for(let i=0;i<8;i++){const a1=i*sa-Math.PI/2,a2=a1+sa*0.55,c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2);s+=`<path d="M${cx+oR*c1},${cy+oR*s1} A${oR},${oR} 0 0,1 ${cx+oR*c2},${cy+oR*s2} L${cx+iR*c2},${cy+iR*s2} A${iR},${iR} 0 0,0 ${cx+iR*c1},${cy+iR*s1}Z" fill="${i%2===0?ch.seg:'white'}"/>`;}
-  return {sz,svg:`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${ch.main}"/>${s}<circle cx="${cx}" cy="${cy}" r="${iR}" fill="${ch.main}" stroke="${ch.rim}" stroke-width="1"/><text x="${cx}" y="${cy+sz*0.08}" text-anchor="middle" font-size="${sz*0.28}" font-weight="700" fill="white" font-family="Arial">${ch.label}</text></svg>`};
+  // Show stacked total if > chip face value, otherwise show chip label
+  const displayText = (amount && amount !== ch.val) ? '$'+amount : ch.label;
+  const fontSize = (amount && amount >= 100) ? sz*0.22 : sz*0.28;
+  return {sz,svg:`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${ch.main}"/>${s}<circle cx="${cx}" cy="${cy}" r="${iR}" fill="${ch.main}" stroke="${ch.rim}" stroke-width="1"/><text x="${cx}" y="${cy+sz*0.08}" text-anchor="middle" font-size="${fontSize}" font-weight="700" fill="white" font-family="Arial">${displayText}</text></svg>`};
 }
 
 function getChip(){return CHIPS.find(c=>c.val===selChip);}
@@ -713,12 +850,19 @@ function placeBet(key,x,y,cw,ch2,tbl){
   if(others+cur+selChip>balance){document.getElementById('bustMsg').style.display='flex';return;}
   document.getElementById('bustMsg').style.display='none';
   playChip();haptic('chip');
-  const {sz,svg}=pChipSVG(chip,cw,ch2);
-  if(bets[key]){bets[key].amount+=selChip;const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);if(el)el.innerHTML=svg;return;}
+  if(bets[key]){
+    bets[key].amount+=selChip;
+    // Re-render chip showing new stacked total
+    const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
+    if(el){const {sz,svg}=pChipSVG(chip,cw,ch2,bets[key].amount);el.innerHTML=svg;}
+    updateBalance();return;
+  }
   bets[key]={amount:selChip,chip};
+  const {sz,svg}=pChipSVG(chip,cw,ch2,selChip);
   const div=document.createElement('div');div.className='placed';div.dataset.bk=key;
   div.style.cssText=`left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px;`;
   div.innerHTML=svg;tbl.appendChild(div);
+  updateBalance();
 }
 
 /* ── BUILD TABLE ── */
@@ -835,7 +979,7 @@ document.querySelectorAll('.tog').forEach(tog=>{
 function syncToggles(){Object.keys(settings).forEach(k=>{const el=document.querySelector(`.tog[data-key="${k}"]`);if(el)el.className='tog '+(settings[k]?'on':'off');});}
 document.getElementById('btn-settings').onclick=()=>showScreen('settings');
 document.getElementById('btn-settings-back').onclick=()=>showScreen('game');
-document.getElementById('btn-daily').onclick=()=>openDaily();
+document.getElementById('st-daily').onclick=()=>openDaily();
 document.getElementById('st-history').onclick=()=>{buildHistory();showScreen('history');};
 document.getElementById('btn-history-back').onclick=()=>showScreen('settings');
 document.getElementById('st-reset').onclick=()=>{balance=20;bets={};updateBalance();save();document.querySelectorAll('.placed').forEach(p=>p.remove());setResult('Balance reset to $20.','res-neutral');showScreen('game');};
