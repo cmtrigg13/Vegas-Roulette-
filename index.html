@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vegas Roulette">
+<meta name="theme-color" content="#05030f">
+<title>Vegas Roulette</title>
+
+<!-- ═══════════════════════════════════════════════
+     ADSENSE — Replace ca-pub-XXXXXXXXXXXXXXXX
+     with your real Publisher ID from AdSense
+     ═══════════════════════════════════════════════ -->
+<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+
+<style>
+/* ── RESET & BASE ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#05030f;font-family:Arial,Helvetica,sans-serif;}
+button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline:none;}
+
+/* ── SCREENS ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:hidden;transition:opacity .3s;pointer-events:none;opacity:0;background:#05030f;}
+.screen.active{opacity:1;pointer-events:all;}
+
+/* ── PHONE SHELL ── */
+.shell{width:100%;max-width:390px;height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;background:#0d0d18;}
+
+/* ── VEGAS SKYLINE SVG (reused across screens) ── */
+.skyline{position:absolute;top:0;left:0;width:100%;height:220px;z-index:0;pointer-events:none;}
+
+/* ── HEADER ── */
+.hdr{display:flex;justify-content:space-between;align-items:center;padding:44px 18px 10px;position:relative;z-index:5;background:linear-gradient(180deg,rgba(4,3,14,0.96) 0%,rgba(8,6,22,0.85) 100%);border-bottom:0.5px solid rgba(255,255,255,0.07);}
+.hdr-title{font-size:15px;font-weight:600;color:#c0c0e0;letter-spacing:.5px;}
+.hdr-right{display:flex;align-items:center;gap:12px;}
+.hdr-bal{font-size:12px;color:#5a5a8a;}.hdr-bal span{color:#8888ff;font-weight:600;}
+.hdr-settings{font-size:18px;cursor:pointer;color:#4a4a7a;padding:4px;}
+
+/* ── RESULT ROW ── */
+.result-row{height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;background:rgba(4,3,14,0.95);position:relative;z-index:5;flex-shrink:0;}
+.res-neutral{color:#3a3a6a;}.res-win{color:#30d090;}.res-lose{color:#e04040;}
+.bust-msg{font-size:9px;color:#e04040;text-align:center;padding:2px 0;background:rgba(4,3,14,0.95);position:relative;z-index:5;flex-shrink:0;display:none;}
+
+/* ── WHEEL ZONE ── */
+.wheel-zone{display:flex;flex-direction:column;align-items:center;padding:8px 0 4px;background:rgba(5,4,18,0.88);position:relative;z-index:5;flex-shrink:0;}
+.pull-label{font-size:8px;color:#4040a0;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
+.pull-arrows{font-size:9px;color:#3535aa;margin-bottom:2px;animation:pulsearr 1.4s ease-in-out infinite;}
+@keyframes pulsearr{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:.9;transform:translateY(3px)}}
+#wheelWrap{position:relative;flex-shrink:0;cursor:grab;}
+#wheelWrap:active{cursor:grabbing;}
+
+/* ── TABLE ── */
+.table-zone{padding:4px 8px 4px;position:relative;z-index:5;background:linear-gradient(180deg,rgba(6,14,10,0.97) 0%,rgba(8,8,20,0.99) 100%);flex-shrink:0;}
+.tbl-hint{font-size:7px;color:#2a2a4a;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;text-align:center;}
+.cell{position:absolute;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:#fff;cursor:pointer;border:0.5px solid rgba(255,255,255,0.1);transition:filter .1s;user-select:none;}
+.cell:active{filter:brightness(2);}
+.num-red{background:linear-gradient(145deg,#922020,#6a1414 60%,#7f1c1c);box-shadow:inset 0 1px 0 rgba(255,100,100,0.2),inset 0 -1px 0 rgba(0,0,0,0.4);}
+.num-black{background:linear-gradient(145deg,#1e1e30,#101018 60%,#191928);box-shadow:inset 0 1px 0 rgba(100,100,180,0.15),inset 0 -1px 0 rgba(0,0,0,0.5);}
+.num-green{background:linear-gradient(145deg,#166638,#0c4424 60%,#145530);box-shadow:inset 0 1px 0 rgba(80,220,120,0.2),inset 0 -1px 0 rgba(0,0,0,0.4);}
+.outside{background:linear-gradient(180deg,#111128,#0c0c20);color:#6060a0;font-size:7px;}
+.outside:active{color:#a0a0ff;}
+.bet-zone{position:absolute;z-index:10;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.bz-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.5);opacity:0;transform:scale(0.4);transition:opacity .15s,transform .15s;background:rgba(160,160,255,0.35);}
+.bet-zone:hover .bz-dot{opacity:1;transform:scale(1);}
+.placed{position:absolute;z-index:20;pointer-events:none;}
+
+/* ── CHIP BAR ── */
+.chip-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 0 6px;background:rgba(8,8,22,0.99);border-top:0.5px solid rgba(255,255,255,0.05);position:relative;z-index:5;flex-shrink:0;}
+.chip-item{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;-webkit-user-select:none;user-select:none;}
+.chip-lbl{font-size:7px;color:#4a4a6a;}.chip-item.sel .chip-lbl{color:#a0a0ff;}.chip-item.dim{opacity:0.28;pointer-events:none;}
+
+/* ── AD BANNER AREA ── */
+.ad-banner{width:100%;min-height:50px;background:rgba(255,255,255,0.02);border-top:0.5px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;position:relative;z-index:5;flex-shrink:0;}
+.ad-placeholder-lbl{font-size:7px;color:#1e1e3a;letter-spacing:1px;text-transform:uppercase;}
+
+/* ── WIN TOAST ── */
+@keyframes winPop{
+  0%{transform:translateX(-50%) scale(0.3);opacity:0;}
+  15%{transform:translateX(-50%) scale(1.15);opacity:1;}
+  25%{transform:translateX(-50%) scale(1);opacity:1;}
+  75%{transform:translateX(-50%) scale(1);opacity:1;}
+  100%{transform:translateX(-50%) scale(0.1);opacity:0;}
+}
+.win-toast{position:absolute;top:38%;left:50%;transform:translateX(-50%);z-index:200;pointer-events:none;
+  background:linear-gradient(135deg,rgba(8,28,18,0.97),rgba(4,18,12,0.97));
+  border:1.5px solid #30d090;border-radius:16px;padding:14px 28px;text-align:center;
+  box-shadow:0 0 30px rgba(40,220,120,0.5),0 8px 32px rgba(0,0,0,0.8);
+  animation:winPop 2s cubic-bezier(0.34,1.56,0.64,1) forwards;white-space:nowrap;}
+.win-toast-amt{font-size:32px;font-weight:800;color:#fff;display:block;}
+.win-toast-sub{font-size:11px;color:#30d090;margin-top:2px;display:block;}
+
+/* ══════════════════════════════════
+   ONBOARDING SCREEN
+   ══════════════════════════════════ */
+#screen-onboarding .shell{justify-content:flex-end;}
+.ob-content{position:relative;z-index:5;display:flex;flex-direction:column;align-items:center;padding:0 0 40px;width:100%;}
+.ob-logo{font-size:52px;margin-bottom:6px;filter:drop-shadow(0 0 20px rgba(255,180,0,0.4));}
+.ob-title{font-size:26px;font-weight:700;color:#fff;letter-spacing:1px;margin-bottom:3px;}
+.ob-sub{font-size:10px;color:#5050a0;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:22px;}
+.ob-card{background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.09);border-radius:14px;padding:14px 16px;margin:0 20px 12px;width:calc(100% - 40px);}
+.ob-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+.ob-row:last-child{margin-bottom:0;}
+.ob-icon{font-size:20px;width:28px;text-align:center;flex-shrink:0;margin-top:1px;}
+.ob-text{font-size:11px;color:#9090b8;line-height:1.5;}
+.ob-text b{color:#c8c8e8;}
+.ob-btn{margin:18px 20px 0;width:calc(100% - 40px);height:50px;background:linear-gradient(135deg,#3030c0,#5020a0);border-radius:14px;color:#fff;font-size:15px;font-weight:700;letter-spacing:.5px;box-shadow:0 6px 24px rgba(60,40,200,0.45);}
+
+/* ══════════════════════════════════
+   AD GATE SCREEN
+   ══════════════════════════════════ */
+#screen-adgate .shell{justify-content:center;}
+.ag-body{display:flex;flex-direction:column;align-items:center;padding:30px 24px 40px;width:100%;position:relative;z-index:5;}
+.ag-emoji{font-size:56px;margin-bottom:14px;animation:wobble 1s ease-in-out infinite;}
+@keyframes wobble{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+.ag-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px;text-align:center;}
+.ag-sub{font-size:12px;color:#5a5a8a;text-align:center;margin-bottom:24px;line-height:1.6;}
+.ag-token-box{background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.1);border-radius:16px;padding:16px 32px;margin-bottom:20px;text-align:center;}
+.ag-token-amt{font-size:38px;font-weight:800;color:#fff;}
+.ag-token-lbl{font-size:9px;color:#4a4a7a;letter-spacing:1.5px;text-transform:uppercase;margin-top:3px;}
+.ag-ad-slot{width:100%;height:70px;background:rgba(255,255,255,0.02);border:0.5px dashed rgba(255,255,255,0.08);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+.ag-ad-lbl{font-size:8px;color:#1e1e3a;letter-spacing:1px;text-transform:uppercase;}
+.ag-watch-btn{width:100%;height:52px;background:linear-gradient(135deg,#1a9a48,#0e6832);border-radius:14px;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;box-shadow:0 6px 24px rgba(20,150,60,0.45);}
+.ag-later{font-size:11px;color:#3a3a6a;cursor:pointer;text-decoration:underline;}
+
+/* ══════════════════════════════════
+   DAILY BONUS SCREEN
+   ══════════════════════════════════ */
+#screen-daily .shell{justify-content:center;}
+.db-body{display:flex;flex-direction:column;align-items:center;padding:30px 24px 40px;width:100%;position:relative;z-index:5;}
+.db-icon{font-size:56px;margin-bottom:14px;}
+.db-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px;}
+.db-card{width:100%;background:linear-gradient(135deg,rgba(30,50,140,0.45),rgba(20,30,80,0.45));border:0.5px solid rgba(80,80,200,0.3);border-radius:16px;padding:18px;margin-bottom:14px;text-align:center;}
+.db-amt{font-size:42px;font-weight:800;color:#fff;}
+.db-card-sub{font-size:9px;color:#5060a0;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;}
+.db-note{font-size:11px;color:#4a4a7a;text-align:center;margin-bottom:22px;line-height:1.6;}
+.db-claim-btn{width:100%;height:52px;background:linear-gradient(135deg,#3030c0,#5020a0);border-radius:14px;color:#fff;font-size:15px;font-weight:700;margin-bottom:12px;box-shadow:0 6px 24px rgba(60,40,200,0.45);}
+.db-claim-btn:disabled{background:rgba(30,30,60,0.5);color:#2a2a5a;box-shadow:none;cursor:not-allowed;}
+.db-timer{font-size:11px;color:#3a3a6a;text-align:center;margin-bottom:20px;}
+.db-timer span{color:#6060b0;font-weight:600;}
+.db-already{font-size:11px;color:#2a6040;text-align:center;background:rgba(20,60,30,0.35);border:0.5px solid rgba(40,120,60,0.3);border-radius:10px;padding:10px 14px;line-height:1.5;}
+.db-back{margin-top:18px;font-size:12px;color:#3a3a6a;cursor:pointer;text-decoration:underline;}
+
+/* ══════════════════════════════════
+   SETTINGS SCREEN
+   ══════════════════════════════════ */
+#screen-settings{background:#05030f;}
+#screen-settings .shell{background:#0d0d18;overflow-y:auto;}
+.st-body{padding:8px 0 40px;position:relative;z-index:5;}
+.st-section{font-size:8px;color:#3a3a6a;letter-spacing:1.5px;text-transform:uppercase;padding:14px 18px 6px;}
+.st-row{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:0.5px solid rgba(255,255,255,0.04);}
+.st-left{display:flex;align-items:center;gap:12px;}
+.st-ico{font-size:16px;width:24px;text-align:center;}
+.st-lbl{font-size:12px;color:#b0b0d0;}
+.st-desc{font-size:9px;color:#3a3a5a;margin-top:2px;}
+.st-val{font-size:11px;color:#4a4aaa;}
+.st-chev{font-size:12px;color:#2a2a5a;}
+/* Toggle */
+.tog{width:40px;height:22px;border-radius:11px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.tog.on{background:#3030c0;}
+.tog.off{background:#1a1a30;}
+.tog::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:2px;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,0.5);}
+.tog.on::after{left:20px;}
+.tog.off::after{left:2px;}
+
+/* ══════════════════════════════════
+   SPIN HISTORY SCREEN
+   ══════════════════════════════════ */
+#screen-history .shell{overflow-y:auto;}
+.hist-body{padding:8px 0 40px;position:relative;z-index:5;}
+.hist-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:#2a2a5a;font-size:13px;text-align:center;gap:10px;}
+.hist-row{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:0.5px solid rgba(255,255,255,0.04);}
+.hist-num{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;}
+.hist-num.r{background:#7a1818;}.hist-num.b{background:#161625;}.hist-num.g{background:#115030;}
+.hist-meta{flex:1;padding:0 12px;}
+.hist-bet{font-size:11px;color:#7070a0;}
+.hist-time{font-size:9px;color:#2a2a4a;margin-top:2px;}
+.hist-net{font-size:13px;font-weight:700;}
+.hist-net.pos{color:#30d090;}.hist-net.neg{color:#e04040;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: ONBOARDING
+     ══════════════════════════════════════════════ -->
+<div class="screen active" id="screen-onboarding">
+  <div class="shell">
+    <svg class="skyline" viewBox="0 0 390 220" preserveAspectRatio="xMidYMax meet">
+      <defs>
+        <linearGradient id="sk1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#03010c"/><stop offset="100%" stop-color="#0d0630"/></linearGradient>
+        <radialGradient id="gh1" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="#ff6600" stop-opacity="0.22"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+        <radialGradient id="gh2" cx="15%" cy="100%" r="45%"><stop offset="0%" stop-color="#ff1a88" stop-opacity="0.16"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+        <radialGradient id="gh3" cx="85%" cy="100%" r="45%"><stop offset="0%" stop-color="#2255ff" stop-opacity="0.16"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+        <linearGradient id="fd1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="transparent"/><stop offset="100%" stop-color="#0d0d18"/></linearGradient>
+      </defs>
+      <rect width="390" height="220" fill="url(#sk1)"/>
+      <rect width="390" height="220" fill="url(#gh1)"/>
+      <rect width="390" height="220" fill="url(#gh2)"/>
+      <rect width="390" height="220" fill="url(#gh3)"/>
+      <circle cx="22" cy="14" r="1" fill="white" opacity="0.8"/><circle cx="60" cy="7" r="0.8" fill="white" opacity="0.7"/>
+      <circle cx="100" cy="20" r="0.9" fill="white" opacity="0.6"/><circle cx="145" cy="10" r="0.7" fill="white" opacity="0.8"/>
+      <circle cx="190" cy="5" r="1" fill="white" opacity="0.7"/><circle cx="230" cy="18" r="0.8" fill="white" opacity="0.6"/>
+      <circle cx="275" cy="8" r="0.9" fill="white" opacity="0.8"/><circle cx="320" cy="15" r="0.7" fill="white" opacity="0.7"/>
+      <circle cx="360" cy="6" r="1" fill="white" opacity="0.6"/><circle cx="380" cy="22" r="0.8" fill="white" opacity="0.7"/>
+      <g fill="#0a061e">
+        <rect x="0" y="130" width="22" height="90"/><rect x="25" y="114" width="16" height="106"/>
+        <rect x="43" y="124" width="12" height="96"/><rect x="57" y="108" width="18" height="112"/>
+        <rect x="78" y="116" width="14" height="104"/><rect x="95" y="102" width="24" height="118"/>
+        <rect x="122" y="120" width="16" height="100"/><rect x="140" y="98" width="20" height="122"/>
+        <rect x="163" y="112" width="14" height="108"/><rect x="180" y="92" width="26" height="128"/>
+        <rect x="210" y="108" width="18" height="112"/><rect x="232" y="94" width="16" height="126"/>
+        <rect x="252" y="118" width="20" height="102"/><rect x="276" y="102" width="14" height="118"/>
+        <rect x="294" y="86" width="24" height="134"/><rect x="322" y="108" width="16" height="112"/>
+        <rect x="342" y="98" width="18" height="122"/><rect x="364" y="116" width="14" height="104"/>
+      </g>
+      <g fill="#100830">
+        <rect x="5" y="140" width="42" height="80"/><rect x="25" y="126" width="20" height="14"/>
+        <rect x="57" y="106" width="8" height="114"/><rect x="53" y="100" width="16" height="8"/>
+        <polygon points="61,88 56,102 66,102" fill="#18103a"/>
+        <rect x="74" y="132" width="58" height="88"/><rect x="82" y="118" width="12" height="14"/>
+        <rect x="100" y="114" width="14" height="18"/><rect x="120" y="120" width="9" height="12"/>
+        <rect x="148" y="74" width="8" height="146"/><ellipse cx="152" cy="74" rx="14" ry="7" fill="#1c1040"/>
+        <ellipse cx="152" cy="67" rx="9" ry="5" fill="#221248"/><circle cx="152" cy="61" r="5" fill="#2a1550"/>
+        <rect x="164" y="124" width="52" height="96"/><rect x="172" y="110" width="14" height="14"/>
+        <rect x="192" y="116" width="16" height="8"/>
+        <rect x="222" y="126" width="64" height="94"/><rect x="232" y="112" width="12" height="14"/>
+        <rect x="250" y="108" width="16" height="18"/><rect x="270" y="114" width="10" height="12"/>
+        <rect x="296" y="82" width="6" height="138"/><polygon points="299,70 294,84 304,84" fill="#1c1040"/>
+        <rect x="306" y="110" width="42" height="110"/><ellipse cx="327" cy="110" rx="21" ry="10" fill="#1c1040"/>
+        <rect x="354" y="126" width="30" height="94"/><rect x="360" y="114" width="10" height="12"/>
+      </g>
+      <g opacity="0.9">
+        <rect x="9" y="146" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="18" y="154" width="4" height="2.5" rx="0.5" fill="#ffd060"/>
+        <rect x="78" y="138" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="90" y="146" width="4" height="2.5" rx="0.5" fill="#ffd060"/>
+        <rect x="104" y="138" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="168" y="130" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="180" y="138" width="4" height="2.5" rx="0.5" fill="#ffd060"/>
+        <rect x="196" y="130" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="226" y="132" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="240" y="140" width="4" height="2.5" rx="0.5" fill="#ffd060"/>
+        <rect x="256" y="132" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="312" y="118" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="322" y="126" width="4" height="2.5" rx="0.5" fill="#ffd060"/>
+        <rect x="358" y="132" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="58" y="108" width="6" height="2" rx="0.5" fill="#ff44bb" opacity="0.9"/>
+        <rect x="150" y="67" width="5" height="2" rx="0.5" fill="#ff4455" opacity="0.9"/>
+        <rect x="297" y="72" width="5" height="2" rx="0.5" fill="#44aaff" opacity="0.9"/>
+        <rect x="308" y="112" width="10" height="2" rx="1" fill="#ff88cc" opacity="0.8"/>
+        <rect x="74" y="131" width="58" height="2" rx="1" fill="#ff5500" opacity="0.5"/>
+        <rect x="222" y="125" width="64" height="2" rx="1" fill="#ffaa00" opacity="0.45"/>
+        <rect x="306" y="110" width="42" height="2" rx="1" fill="#ff66bb" opacity="0.5"/>
+      </g>
+      <rect x="0" y="160" width="390" height="60" fill="url(#fd1)"/>
+      <rect x="0" y="195" width="390" height="25" fill="#0d0d18"/>
+    </svg>
+    <div class="ob-content">
+      <div class="ob-logo">🎰</div>
+      <div class="ob-title">Vegas Roulette</div>
+      <div class="ob-sub">Free to Play</div>
+      <div class="ob-card">
+        <div class="ob-row"><div class="ob-icon">🪙</div><div class="ob-text"><b>Start with $20 in tokens.</b> Bet on numbers, splits, corners &amp; outside bets — just like a real Vegas table.</div></div>
+        <div class="ob-row"><div class="ob-icon">📺</div><div class="ob-text"><b>Hit $0?</b> Watch a short ad to reload $20 and keep playing anytime.</div></div>
+        <div class="ob-row"><div class="ob-icon">🎁</div><div class="ob-text"><b>Daily bonus.</b> Come back every 24 hours to claim a free $20 top-up if your balance is below $20.</div></div>
+      </div>
+      <button class="ob-btn" id="ob-start">Let's Play!</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: GAME
+     ══════════════════════════════════════════════ -->
+<div class="screen" id="screen-game">
+  <div class="shell">
+    <!-- Skyline reused -->
+    <svg class="skyline" viewBox="0 0 390 220" preserveAspectRatio="xMidYMax meet">
+      <use href="#sky-content"/>
+      <defs>
+        <linearGradient id="sk2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#03010c"/><stop offset="100%" stop-color="#0d0630"/></linearGradient>
+        <radialGradient id="gh4" cx="50%" cy="100%" r="70%"><stop offset="0%" stop-color="#ff6600" stop-opacity="0.22"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+        <linearGradient id="fd2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="transparent"/><stop offset="100%" stop-color="#0d0d18"/></linearGradient>
+      </defs>
+      <rect width="390" height="220" fill="url(#sk2)"/>
+      <rect width="390" height="220" fill="url(#gh4)"/>
+      <g fill="#0a061e" opacity="0.7">
+        <rect x="0" y="140" width="22" height="80"/><rect x="25" y="124" width="16" height="96"/>
+        <rect x="57" y="118" width="18" height="102"/><rect x="95" y="112" width="24" height="108"/>
+        <rect x="140" y="108" width="20" height="112"/><rect x="180" y="102" width="26" height="118"/>
+        <rect x="232" y="104" width="16" height="116"/><rect x="294" y="96" width="24" height="124"/>
+        <rect x="342" y="108" width="18" height="112"/>
+      </g>
+      <g fill="#100830" opacity="0.8">
+        <rect x="5" y="150" width="42" height="70"/><rect x="74" y="142" width="58" height="78"/>
+        <rect x="148" y="84" width="8" height="136"/><ellipse cx="152" cy="84" rx="14" ry="7" fill="#1c1040"/>
+        <rect x="164" y="134" width="52" height="86"/><rect x="222" y="136" width="64" height="84"/>
+        <rect x="306" y="120" width="42" height="100"/><ellipse cx="327" cy="120" rx="21" ry="10" fill="#1c1040"/>
+      </g>
+      <g opacity="0.7">
+        <rect x="9" y="156" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="78" y="148" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="168" y="140" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="226" y="142" width="4" height="2.5" rx="0.5" fill="#ffe580"/>
+        <rect x="150" y="76" width="5" height="2" rx="0.5" fill="#ff4455" opacity="0.9"/>
+        <rect x="74" y="141" width="58" height="2" rx="1" fill="#ff5500" opacity="0.4"/>
+        <rect x="222" y="135" width="64" height="2" rx="1" fill="#ffaa00" opacity="0.35"/>
+      </g>
+      <rect x="0" y="160" width="390" height="60" fill="url(#fd2)"/>
+      <rect x="0" y="200" width="390" height="20" fill="#0d0d18"/>
+    </svg>
+
+    <div class="hdr">
+      <span class="hdr-title">Vegas Roulette</span>
+      <div class="hdr-right">
+        <span class="hdr-bal">Balance <span id="balDisplay">$20.00</span></span>
+        <span class="hdr-settings" id="btn-settings">⚙️</span>
+        <span class="hdr-settings" id="btn-daily">🎁</span>
+      </div>
+    </div>
+
+    <div class="wheel-zone">
+      <div class="pull-label">pull to spin</div>
+      <div class="pull-arrows">▼ ▼ ▼</div>
+      <div id="wheelWrap">
+        <svg id="ballSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:5;">
+          <defs>
+            <radialGradient id="ballG" cx="35%" cy="30%"><stop offset="0%" stop-color="#ffffff"/><stop offset="55%" stop-color="#d0d0ff"/><stop offset="100%" stop-color="#8080bb"/></radialGradient>
+            <filter id="bsh"><feDropShadow dx="0.5" dy="1" stdDeviation="1" flood-color="#000055" flood-opacity="0.9"/></filter>
+          </defs>
+          <circle id="ball" cx="0" cy="0" r="5" fill="url(#ballG)" filter="url(#bsh)"/>
+        </svg>
+        <canvas id="wheelCanvas" style="position:absolute;top:0;left:0;"></canvas>
+        <svg id="hubSvg" style="position:absolute;top:0;left:0;pointer-events:none;z-index:4;">
+          <defs><radialGradient id="hubG" cx="38%" cy="32%"><stop offset="0%" stop-color="#252550"/><stop offset="100%" stop-color="#06060f"/></radialGradient></defs>
+        </svg>
+      </div>
+    </div>
+
+    <div class="result-row"><span id="resultTxt" class="res-neutral">place a bet · pull wheel to spin</span></div>
+    <div class="bust-msg" id="bustMsg">⚠ Total bet exceeds balance — remove some chips</div>
+
+    <div class="table-zone">
+      <div id="rTable" style="position:relative;"></div>
+    </div>
+
+    <div class="chip-bar" id="chipBar"></div>
+
+    <!-- Banner Ad Slot -->
+    <div class="ad-banner" id="adBanner">
+      <!-- ADSENSE BANNER — uncomment and replace Publisher ID after approval
+      <ins class="adsbygoogle"
+           style="display:inline-block;width:320px;height:50px"
+           data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+           data-ad-slot="XXXXXXXXXX"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      -->
+      <span class="ad-placeholder-lbl">Ad banner — activate after AdSense approval</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: AD GATE
+     ══════════════════════════════════════════════ -->
+<div class="screen" id="screen-adgate">
+  <div class="shell" style="background:#08080f;justify-content:center;">
+    <div class="ag-body">
+      <div class="ag-emoji">😬</div>
+      <div class="ag-title">You're out of tokens!</div>
+      <div class="ag-sub">Watch a short ad to reload<br>your wallet and keep playing.</div>
+      <div class="ag-token-box">
+        <div class="ag-token-amt">+$20</div>
+        <div class="ag-token-lbl">Free Tokens</div>
+      </div>
+      <!-- ADSENSE REWARDED / INTERSTITIAL SLOT
+           Replace with your actual AdSense interstitial code after approval -->
+      <div class="ag-ad-slot">
+        <span class="ag-ad-lbl">Ad loads here after AdSense approval</span>
+      </div>
+      <button class="ag-watch-btn" id="ag-watch-btn">▶&nbsp; Watch Ad — Get $20</button>
+      <span class="ag-later" id="ag-later">Come back later</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: DAILY BONUS
+     ══════════════════════════════════════════════ -->
+<div class="screen" id="screen-daily">
+  <div class="shell" style="background:#08080f;justify-content:center;">
+    <div class="db-body">
+      <div class="db-icon">🎁</div>
+      <div class="db-title">Daily Bonus</div>
+      <div class="db-card">
+        <div class="db-amt">$20</div>
+        <div class="db-card-sub">Free Tokens</div>
+      </div>
+      <div class="db-note" id="db-note">Your balance is below $20 — claim your free daily top-up!</div>
+      <button class="db-claim-btn" id="db-claim-btn">🎉 Claim Free $20</button>
+      <div class="db-timer" id="db-timer">Next bonus in <span id="db-countdown">24h 00m</span></div>
+      <div class="db-already" id="db-already" style="display:none;">✓ You already have $20 or more. Come back when your balance drops below $20.</div>
+      <span class="db-back" id="db-back">← Back to game</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: SETTINGS
+     ══════════════════════════════════════════════ -->
+<div class="screen" id="screen-settings">
+  <div class="shell">
+    <div class="hdr">
+      <span class="hdr-title">Settings</span>
+      <span class="hdr-settings" id="btn-settings-back">✕</span>
+    </div>
+    <div class="st-body">
+      <div class="st-section">Sound &amp; Feel</div>
+      <div class="st-row">
+        <div class="st-left"><div class="st-ico">🔊</div><div><div class="st-lbl">Sound Effects</div><div class="st-desc">Spin, chip click &amp; win sounds</div></div></div>
+        <div class="tog on" id="tog-sfx" data-key="sfx"></div>
+      </div>
+      <div class="st-row">
+        <div class="st-left"><div class="st-ico">📳</div><div><div class="st-lbl">Haptic Feedback</div><div class="st-desc">Vibration on spin &amp; win</div></div></div>
+        <div class="tog on" id="tog-haptic" data-key="haptic"></div>
+      </div>
+      <div class="st-row">
+        <div class="st-left"><div class="st-ico">🎵</div><div><div class="st-lbl">Background Music</div><div class="st-desc">Ambient casino atmosphere</div></div></div>
+        <div class="tog off" id="tog-music" data-key="music"></div>
+      </div>
+      <div class="st-section">Game</div>
+      <div class="st-row" id="st-history">
+        <div class="st-left"><div class="st-ico">📊</div><div><div class="st-lbl">Spin History</div><div class="st-desc">View your recent spins</div></div></div>
+        <span class="st-chev">›</span>
+      </div>
+      <div class="st-row" id="st-reset">
+        <div class="st-left"><div class="st-ico">🔄</div><div><div class="st-lbl">Reset Balance to $20</div><div class="st-desc">Start fresh</div></div></div>
+        <span class="st-chev">›</span>
+      </div>
+      <div class="st-section">About</div>
+      <div class="st-row">
+        <div class="st-left"><div class="st-ico">📋</div><div><div class="st-lbl">Privacy Policy</div></div></div>
+        <span class="st-chev">›</span>
+      </div>
+      <div class="st-row">
+        <div class="st-left"><div class="st-ico">⭐</div><div><div class="st-lbl">Rate the App</div></div></div>
+        <span class="st-chev">›</span>
+      </div>
+      <div class="st-row">
+        <div class="st-left"><div class="st-ico">ℹ️</div><div><div class="st-lbl">Version</div></div></div>
+        <span class="st-val">1.0.0</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: SPIN HISTORY
+     ══════════════════════════════════════════════ -->
+<div class="screen" id="screen-history">
+  <div class="shell">
+    <div class="hdr">
+      <span class="hdr-title">Spin History</span>
+      <span class="hdr-settings" id="btn-history-back">✕</span>
+    </div>
+    <div class="hist-body" id="histBody"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════
+   CONSTANTS & STATE
+   ══════════════════════════════════════════════ */
+const RED = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const CHIPS = [
+  {val:1,  main:'#6d28d9',rim:'#a78bfa',seg:'#c4b5fd',label:'$1'},
+  {val:5,  main:'#991b1b',rim:'#fca5a5',seg:'#fecaca',label:'$5'},
+  {val:20, main:'#1e3a8a',rim:'#93c5fd',seg:'#bfdbfe',label:'$20'},
+  {val:100,main:'#78350f',rim:'#fcd34d',seg:'#fde68a',label:'$100'},
+];
+const NL = [
+  [3,6,9,12,15,18,21,24,27,30,33,36],
+  [2,5,8,11,14,17,20,23,26,29,32,35],
+  [1,4,7,10,13,16,19,22,25,28,31,34],
+];
+const WHEEL_ORDER = [0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,
+                     '00',27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2];
+
+// Game state
+let balance = parseFloat(localStorage.getItem('balance') || '20');
+let selChip = 1;
+let bets = {};
+let spinning = false;
+let wheelAngle = 0;
+let ballAngle = -Math.PI / 2;
+let spinHistory = JSON.parse(localStorage.getItem('spinHistory') || '[]');
+let lastDailyBonus = parseInt(localStorage.getItem('lastDailyBonus') || '0');
+let settings = JSON.parse(localStorage.getItem('settings') || '{"sfx":true,"haptic":true,"music":false}');
+
+/* ══════════════════════════════════════════════
+   SCREEN ROUTING
+   ══════════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+/* ══════════════════════════════════════════════
+   SAVE STATE
+   ══════════════════════════════════════════════ */
+function saveState() {
+  localStorage.setItem('balance', balance.toString());
+  localStorage.setItem('spinHistory', JSON.stringify(spinHistory.slice(0, 100)));
+  localStorage.setItem('settings', JSON.stringify(settings));
+}
+
+/* ══════════════════════════════════════════════
+   AUDIO ENGINE (Web Audio API — no files needed)
+   ══════════════════════════════════════════════ */
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playTone(freq, type, duration, gain=0.3, delay=0) {
+  if (!settings.sfx) return;
+  try {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const vol = ctx.createGain();
+    osc.connect(vol); vol.connect(ctx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    vol.gain.setValueAtTime(gain, ctx.currentTime + delay);
+    vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + duration);
+  } catch(e){}
+}
+function playChipClick() { playTone(900, 'square', 0.04, 0.15); }
+function playSpinStart() {
+  playTone(200, 'sawtooth', 0.3, 0.2);
+  playTone(180, 'sawtooth', 0.3, 0.15, 0.05);
+}
+function playBallRoll() {
+  for(let i=0;i<8;i++) playTone(300+i*40,'sine',0.08,0.06,i*0.1);
+}
+function playWin(amount) {
+  const notes = amount > 50 ? [523,659,784,1047] : [523,659,784];
+  notes.forEach((f,i) => playTone(f,'sine',0.4,0.3,i*0.12));
+}
+function playLose() {
+  playTone(220,'sawtooth',0.3,0.2);
+  playTone(180,'sawtooth',0.4,0.2,0.15);
+}
+
+/* ══════════════════════════════════════════════
+   HAPTICS
+   ══════════════════════════════════════════════ */
+function haptic(type) {
+  if (!settings.haptic || !navigator.vibrate) return;
+  if (type === 'chip')  navigator.vibrate(12);
+  if (type === 'spin')  navigator.vibrate([30,15,30,15,60]);
+  if (type === 'win')   navigator.vibrate([50,30,50,30,100,30,150]);
+  if (type === 'lose')  navigator.vibrate(80);
+}
+
+/* ══════════════════════════════════════════════
+   WHEEL CANVAS — High-DPI crisp rendering
+   ══════════════════════════════════════════════ */
+let WS = 0; // wheel size (set dynamically)
+let CX, CY, OR, IR, BT;
+
+function initWheel() {
+  const vw = Math.min(window.innerWidth, 390);
+  WS = Math.round(Math.min(vw * 0.52, 180));
+  CX = CY = WS / 2;
+  OR = WS / 2 - 4;
+  IR = WS * 0.13;
+  BT = WS * 0.415;
+
+  const wrap = document.getElementById('wheelWrap');
+  wrap.style.width = WS + 'px';
+  wrap.style.height = WS + 'px';
+
+  const cv = document.getElementById('wheelCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = WS * dpr; cv.height = WS * dpr;
+  cv.style.width = WS + 'px'; cv.style.height = WS + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const ballSvg = document.getElementById('ballSvg');
+  ballSvg.setAttribute('width', WS); ballSvg.setAttribute('height', WS);
+  ballSvg.setAttribute('viewBox', `0 0 ${WS} ${WS}`);
+
+  const hubSvg = document.getElementById('hubSvg');
+  hubSvg.setAttribute('width', WS); hubSvg.setAttribute('height', WS);
+  hubSvg.setAttribute('viewBox', `0 0 ${WS} ${WS}`);
+
+  // Hub + pointer
+  const hr = IR + 2;
+  hubSvg.innerHTML = `
+    <defs><radialGradient id="hubG2" cx="38%" cy="32%"><stop offset="0%" stop-color="#252550"/><stop offset="100%" stop-color="#06060f"/></radialGradient></defs>
+    <polygon points="${CX},${CY - OR*0.42} ${CX-3},${CY - OR*0.28} ${CX+3},${CY - OR*0.28}" fill="#6060ff" opacity="0.95"/>
+    <circle cx="${CX}" cy="${CY}" r="${hr}" fill="url(#hubG2)" stroke="#3030b0" stroke-width="1.5"/>
+    <circle cx="${CX}" cy="${CY}" r="${IR*0.65}" fill="#08081c" stroke="rgba(60,60,200,0.4)" stroke-width="0.8"/>
+    <circle cx="${CX}" cy="${CY}" r="${IR*0.28}" fill="#0e0e28"/>
+    <ellipse cx="${CX*0.94}" cy="${CY*0.93}" rx="${IR*0.35}" ry="${IR*0.2}" fill="rgba(255,255,255,0.07)" transform="rotate(-30,${CX*0.94},${CY*0.93})"/>
+  `;
+
+  drawWheel(wheelAngle);
+  moveBall(ballAngle);
+  setupDrag();
+}
+
+function getCtx() {
+  return document.getElementById('wheelCanvas').getContext('2d');
+}
+
+function drawWheel(rot) {
+  const ctx = getCtx();
+  ctx.clearRect(0, 0, WS, WS);
+  const total = WHEEL_ORDER.length;
+
+  // outer rim
+  ctx.beginPath(); ctx.arc(CX, CY, OR+4, 0, Math.PI*2);
+  ctx.fillStyle = '#06063a'; ctx.fill();
+  ctx.beginPath(); ctx.arc(CX, CY, OR+4, 0, Math.PI*2);
+  ctx.strokeStyle = '#14148a'; ctx.lineWidth = 2; ctx.stroke();
+
+  WHEEL_ORDER.forEach((n, i) => {
+    const a1 = rot + (i / total) * Math.PI * 2 - Math.PI/2;
+    const a2 = rot + ((i+1) / total) * Math.PI * 2 - Math.PI/2;
+    const isG = n===0||n==='00', isR = typeof n==='number' && RED.has(n);
+
+    ctx.beginPath();
+    ctx.moveTo(CX+IR*Math.cos(a1), CY+IR*Math.sin(a1));
+    ctx.lineTo(CX+OR*Math.cos(a1), CY+OR*Math.sin(a1));
+    ctx.arc(CX, CY, OR, a1, a2);
+    ctx.lineTo(CX+IR*Math.cos(a2), CY+IR*Math.sin(a2));
+    ctx.arc(CX, CY, IR, a2, a1, true);
+    ctx.closePath();
+    ctx.fillStyle = isG ? '#0e6035' : isR ? '#921c1c' : '#1a1a2e';
+    ctx.fill();
+
+    // top edge highlight
+    ctx.beginPath(); ctx.arc(CX, CY, OR, a1, a2);
+    ctx.strokeStyle = isG ? 'rgba(60,200,100,0.4)' : isR ? 'rgba(255,90,90,0.35)' : 'rgba(80,80,220,0.25)';
+    ctx.lineWidth = 1.5; ctx.stroke();
+
+    // divider
+    ctx.beginPath();
+    ctx.moveTo(CX+IR*Math.cos(a1), CY+IR*Math.sin(a1));
+    ctx.lineTo(CX+OR*Math.cos(a1), CY+OR*Math.sin(a1));
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 0.6; ctx.stroke();
+
+    // number
+    const mid = rot + ((i+0.5)/total)*Math.PI*2 - Math.PI/2;
+    ctx.save();
+    ctx.translate(CX+(OR-OR*0.14)*Math.cos(mid), CY+(OR-OR*0.14)*Math.sin(mid));
+    ctx.rotate(mid + Math.PI/2);
+    ctx.fillStyle = '#eeeeff';
+    ctx.font = `bold ${WS*0.04}px Arial`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'transparent';
+    ctx.fillText(String(n), 0, 0);
+    ctx.restore();
+  });
+
+  // ball track groove
+  ctx.beginPath(); ctx.arc(CX, CY, BT+2, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.beginPath(); ctx.arc(CX, CY, BT, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(60,60,160,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // fret pegs
+  for(let i=0;i<total;i++){
+    const a = rot + (i/total)*Math.PI*2 - Math.PI/2;
+    ctx.beginPath();
+    ctx.arc(CX+(OR+1)*Math.cos(a), CY+(OR+1)*Math.sin(a), 1.2, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(180,180,255,0.5)'; ctx.fill();
+  }
+
+  // gloss
+  const sh = ctx.createRadialGradient(CX*0.7,CY*0.7,4,CX*0.85,CY*0.85,OR);
+  sh.addColorStop(0,'rgba(255,255,255,0.09)');
+  sh.addColorStop(0.5,'rgba(255,255,255,0.02)');
+  sh.addColorStop(1,'transparent');
+  ctx.beginPath(); ctx.arc(CX,CY,OR,0,Math.PI*2);
+  ctx.fillStyle = sh; ctx.fill();
+}
+
+function moveBall(angle) {
+  const bx = CX + BT*Math.cos(angle);
+  const by = CY + BT*Math.sin(angle);
+  document.getElementById('ball').setAttribute('cx', bx);
+  document.getElementById('ball').setAttribute('cy', by);
+}
+
+/* ══════════════════════════════════════════════
+   DRAG TO SPIN
+   ══════════════════════════════════════════════ */
+function setupDrag() {
+  const ww = document.getElementById('wheelWrap');
+  const cv = document.getElementById('wheelCanvas');
+  let dragY = null, dragging = false;
+
+  ww.addEventListener('pointerdown', e => {
+    dragging = true; dragY = e.clientY;
+    ww.setPointerCapture(e.pointerId);
+  });
+  ww.addEventListener('pointermove', e => {
+    if (!dragging || spinning) return;
+    const d = Math.max(0, e.clientY - dragY);
+    cv.style.transform = `translateY(${Math.min(d*0.28,20)}px)`;
+  });
+  ww.addEventListener('pointerup', e => {
+    if (!dragging) return;
+    dragging = false;
+    const d = Math.max(0, e.clientY - dragY);
+    cv.style.transform = '';
+    if (d > 28) doSpin();
+  });
+}
+
+/* ══════════════════════════════════════════════
+   SPIN LOGIC
+   ══════════════════════════════════════════════ */
+function totalBet() {
+  return Object.values(bets).reduce((s,b) => s + b.amount, 0);
+}
+
+function doSpin() {
+  if (spinning) return;
+  const tb = totalBet();
+  if (tb === 0) { setResult('place a bet first!', 'res-neutral'); return; }
+  if (tb > balance) { document.getElementById('bustMsg').style.display='flex'; return; }
+  document.getElementById('bustMsg').style.display = 'none';
+
+  spinning = true;
+  haptic('spin');
+  playSpinStart();
+  playBallRoll();
+
+  const DURATION = 3600;
+  const wDelta = (6 + Math.random()*3) * Math.PI * 2;
+  const bDelta = -((8 + Math.random()*5) * Math.PI*2 + Math.random()*Math.PI*2);
+  const sw = wheelAngle, sb = ballAngle, t0 = performance.now();
+
+  function frame(now) {
+    const t = Math.min((now-t0)/DURATION, 1);
+    const e = 1 - Math.pow(1-t, 3);
+    wheelAngle = sw + wDelta*e;
+    ballAngle = sb + bDelta*e;
+    drawWheel(wheelAngle);
+    moveBall(ballAngle);
+    if (t < 1) requestAnimationFrame(frame);
+    else finishSpin();
+  }
+  requestAnimationFrame(frame);
+}
+
+function finishSpin() {
+  spinning = false;
+  const all = [0,'00',1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36];
+  const result = all[Math.floor(Math.random()*38)];
+  const isRed = typeof result==='number' && RED.has(result);
+  const isGreen = result===0 || result==='00';
+  const color = isGreen ? 'Green' : isRed ? 'Red' : 'Black';
+  let win=0, bet=0;
+
+  Object.entries(bets).forEach(([k,v]) => {
+    bet += v.amount;
+    const ci = k.indexOf(':'), type = k.slice(0,ci), data = k.slice(ci+1);
+    if (type==='single' && String(result)===data) win += v.amount*35;
+    else if (type==='split') {
+      const pts = data.split('-');
+      if (pts.includes(String(result)) || pts.map(Number).includes(result)) win += v.amount*17;
+    }
+    else if (type==='corner' && data.split('-').map(Number).includes(result)) win += v.amount*8;
+    else if (type==='street') {
+      const ci2=parseInt(data);
+      if (typeof result==='number' && [NL[0][ci2],NL[1][ci2],NL[2][ci2]].includes(result)) win += v.amount*11;
+    }
+    else if (k==='outside:Red' && isRed) win += v.amount;
+    else if (k==='outside:Black' && !isRed && !isGreen) win += v.amount;
+    else if (k==='outside:Odd' && typeof result==='number' && result%2===1) win += v.amount;
+    else if (k==='outside:Even' && typeof result==='number' && result%2===0 && result!==0) win += v.amount;
+    else if (k==='outside:1-18' && typeof result==='number' && result>=1 && result<=18) win += v.amount;
+    else if (k==='outside:19-36' && typeof result==='number' && result>=19 && result<=36) win += v.amount;
+    else if (k==='outside:1st 12' && typeof result==='number' && result>=1 && result<=12) win += v.amount;
+    else if (k==='outside:2nd 12' && typeof result==='number' && result>=13 && result<=24) win += v.amount;
+    else if (k==='outside:3rd 12' && typeof result==='number' && result>=25 && result<=36) win += v.amount;
+  });
+
+  const net = win - bet;
+  balance = Math.max(0, balance + net);
+  updateBalance();
+
+  // Record history
+  spinHistory.unshift({ result, color, net, bet, ts: Date.now() });
+  saveState();
+
+  setResult(`${color} ${result} — ${net>=0?'+':''}$${net}`, net>=0?'res-win':'res-lose');
+  bets = {};
+  document.querySelectorAll('.placed').forEach(p => p.remove());
+  buildChipBar();
+
+  if (net > 0) {
+    haptic('win');
+    playWin(net);
+    showWinToast(net);
+  } else {
+    haptic('lose');
+    playLose();
+  }
+
+  // Check if broke
+  setTimeout(() => {
+    if (balance <= 0) showScreen('adgate');
+  }, 2200);
+}
+
+function setResult(txt, cls) {
+  const el = document.getElementById('resultTxt');
+  el.textContent = txt; el.className = cls;
+}
+
+function updateBalance() {
+  document.getElementById('balDisplay').textContent = '$' + balance.toFixed(2);
+}
+
+function showWinToast(net) {
+  const shell = document.querySelector('#screen-game .shell');
+  const t = document.createElement('div');
+  t.className = 'win-toast';
+  t.innerHTML = `<span class="win-toast-amt">+$${net}!</span><span class="win-toast-sub">Winner! 🎉</span>`;
+  shell.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+/* ══════════════════════════════════════════════
+   CHIP SVG RENDERER
+   ══════════════════════════════════════════════ */
+function chipSVG(chip, size, selected) {
+  const cx=size/2, cy=size/2, r=size/2-1.5;
+  const sa=Math.PI*2/8, oR=r, iR=r*0.72;
+  let s='';
+  for(let i=0;i<8;i++){
+    const a1=i*sa-Math.PI/2, a2=a1+sa*0.55;
+    const c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2);
+    s+=`<path d="M${cx+oR*c1},${cy+oR*s1} A${oR},${oR} 0 0,1 ${cx+oR*c2},${cy+oR*s2} L${cx+iR*c2},${cy+iR*s2} A${iR},${iR} 0 0,0 ${cx+iR*c1},${cy+iR*s1}Z" fill="${i%2===0?chip.seg:'white'}"/>`;
+  }
+  const ring = selected ? `<circle cx="${cx}" cy="${cy}" r="${r+3.5}" fill="none" stroke="white" stroke-width="2.2"/>` : '';
+  const gid = 'cg'+chip.val;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <defs><radialGradient id="${gid}" cx="38%" cy="35%"><stop offset="0%" stop-color="rgba(255,255,255,0.22)"/><stop offset="100%" stop-color="rgba(0,0,0,0.3)"/></radialGradient></defs>
+    ${ring}<circle cx="${cx}" cy="${cy}" r="${r}" fill="${chip.main}"/>${s}
+    <circle cx="${cx}" cy="${cy}" r="${iR}" fill="${chip.main}" stroke="${chip.rim}" stroke-width="1.8"/>
+    <circle cx="${cx}" cy="${cy}" r="${iR}" fill="url(#${gid})" opacity="0.7"/>
+    <text x="${cx}" y="${cy+size*0.07}" text-anchor="middle" font-size="${size*0.22}" font-weight="700" fill="white" font-family="Arial">${chip.label}</text>
+  </svg>`;
+}
+
+function placedChipSVG(chip, size) {
+  const cx=size/2, cy=size/2, r=size/2-1;
+  const sa=Math.PI*2/8, oR=r, iR=r*0.68;
+  let s='';
+  for(let i=0;i<8;i++){
+    const a1=i*sa-Math.PI/2, a2=a1+sa*0.55;
+    const c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2);
+    s+=`<path d="M${cx+oR*c1},${cy+oR*s1} A${oR},${oR} 0 0,1 ${cx+oR*c2},${cy+oR*s2} L${cx+iR*c2},${cy+iR*s2} A${iR},${iR} 0 0,0 ${cx+iR*c1},${cy+iR*s1}Z" fill="${i%2===0?chip.seg:'white'}"/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${chip.main}"/>${s}
+    <circle cx="${cx}" cy="${cy}" r="${iR}" fill="${chip.main}" stroke="${chip.rim}" stroke-width="1"/>
+    <text x="${cx}" y="${cy+size*0.08}" text-anchor="middle" font-size="${size*0.3}" font-weight="700" fill="white" font-family="Arial">${chip.label}</text>
+  </svg>`;
+}
+
+function getChip() { return CHIPS.find(c => c.val===selChip); }
+
+function buildChipBar() {
+  const bar = document.getElementById('chipBar');
+  bar.innerHTML = '';
+  if (selChip > balance) {
+    const best = CHIPS.slice().reverse().find(c => c.val <= balance);
+    if (best) selChip = best.val;
+  }
+  CHIPS.forEach(chip => {
+    const ok = chip.val <= balance;
+    const item = document.createElement('div');
+    item.className = 'chip-item' + (chip.val===selChip && ok?' sel':'') + (ok?'':' dim');
+    const sz = Math.min(44, Math.round(window.innerWidth * 0.11));
+    item.innerHTML = chipSVG(chip, sz, chip.val===selChip && ok) + `<span class="chip-lbl">${chip.label}</span>`;
+    if (ok) item.onclick = () => { selChip=chip.val; playChipClick(); haptic('chip'); buildChipBar(); };
+    bar.appendChild(item);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   BET PLACEMENT
+   ══════════════════════════════════════════════ */
+function placeBet(key, x, y, tableEl) {
+  const ch = getChip();
+  const cur = bets[key] ? bets[key].amount : 0;
+  const others = totalBet() - cur;
+  if (others + cur + selChip > balance) {
+    document.getElementById('bustMsg').style.display = 'flex';
+    return;
+  }
+  document.getElementById('bustMsg').style.display = 'none';
+  playChipClick(); haptic('chip');
+
+  if (bets[key]) {
+    bets[key].amount += selChip;
+    const el = tableEl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
+    if (el) el.innerHTML = placedChipSVG(ch, 18);
+    return;
+  }
+  bets[key] = { amount: selChip, chip: ch };
+  const div = document.createElement('div');
+  div.className = 'placed'; div.dataset.bk = key;
+  div.style.cssText = `left:${x-9}px;top:${y-9}px;width:18px;height:18px;`;
+  div.innerHTML = placedChipSVG(ch, 18);
+  tableEl.appendChild(div);
+}
+
+/* ══════════════════════════════════════════════
+   BUILD TABLE
+   ══════════════════════════════════════════════ */
+function buildTable() {
+  const tbl = document.getElementById('rTable');
+  const vw = Math.min(window.innerWidth, 390) - 16;
+  const CW = Math.floor((vw - vw*0.075) / 12);
+  const CH = Math.round(CW * 0.95);
+  const zW = Math.round(CW * 0.6);
+  const nOX = zW + 1;
+  const oY = CH*3+2, oH = Math.round(CH*0.82);
+  const b2Y = oY+oH+1, bH = Math.round(CH*0.75);
+  const tH = b2Y+bH+2;
+  tbl.style.cssText = `position:relative;width:${nOX+CW*12}px;height:${tH}px;margin:0 auto;`;
+
+  function cell(lbl, cls, x, y, w, h, key) {
+    const d = document.createElement('div');
+    d.className = 'cell ' + cls;
+    d.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;`;
+    d.textContent = lbl;
+    d.onclick = e => { e.stopPropagation(); placeBet(key, x+w/2, y+h/2, tbl); };
+    tbl.appendChild(d);
+  }
+
+  cell('0',  'num-green',   0, 0,    zW, CH*1.5, 'single:0');
+  cell('00', 'num-green',   0, CH*1.5, zW, CH*1.5, 'single:00');
+  NL.forEach((row,ri) => row.forEach((n,ci) =>
+    cell(String(n), RED.has(n)?'num-red':'num-black', nOX+ci*CW, ri*CH, CW, CH, `single:${n}`)
+  ));
+  ['1st 12','2nd 12','3rd 12'].forEach((lbl,i) =>
+    cell(lbl, 'outside', nOX+i*CW*4, oY, CW*4, oH, `outside:${lbl}`)
+  );
+  ['1-18','Even','Red','Black','Odd','19-36'].forEach((lbl,i) => {
+    const cls = lbl==='Red'?'outside num-red':lbl==='Black'?'outside num-black':'outside';
+    cell(lbl, cls, nOX+i*CW*2, b2Y, CW*2, bH, `outside:${lbl}`);
+  });
+
+  // Intersections
+  function zone(key, x, y) {
+    const bz = document.createElement('div');
+    bz.className = 'bet-zone';
+    bz.style.cssText = `left:${x-7}px;top:${y-7}px;width:14px;height:14px;`;
+    const dot = document.createElement('div'); dot.className = 'bz-dot';
+    bz.appendChild(dot);
+    bz.onclick = e => { e.stopPropagation(); placeBet(key, x, y, tbl); };
+    tbl.appendChild(bz);
+  }
+
+  // 0-00 split
+  zone('split:0-00', zW/2, CH*1.5);
+
+  NL.forEach((row, ri) => row.forEach((n, ci) => {
+    const cx=nOX+ci*CW, cy=ri*CH;
+    if (ci<11) { const n2=NL[ri][ci+1]; zone(`split:${Math.min(n,n2)}-${Math.max(n,n2)}`,cx+CW,cy+CH/2); }
+    if (ri<2)  { const n2=NL[ri+1][ci]; zone(`split:${Math.min(n,n2)}-${Math.max(n,n2)}`,cx+CW/2,cy+CH); }
+    if (ri<2&&ci<11) {
+      const ns=[n,NL[ri][ci+1],NL[ri+1][ci],NL[ri+1][ci+1]].sort((a,b)=>a-b);
+      zone(`corner:${ns.join('-')}`, cx+CW, cy+CH);
+    }
+  }));
+  NL[0].forEach((_,ci) => zone(`street:${ci}`, nOX+ci*CW+CW/2, CH*3));
+}
+
+/* ══════════════════════════════════════════════
+   DAILY BONUS LOGIC
+   ══════════════════════════════════════════════ */
+function openDaily() {
+  const now = Date.now();
+  const elapsed = now - lastDailyBonus;
+  const cooldown = 24 * 60 * 60 * 1000;
+  const ready = elapsed >= cooldown;
+  const hasEnough = balance >= 20;
+
+  const claimBtn = document.getElementById('db-claim-btn');
+  const note = document.getElementById('db-note');
+  const timer = document.getElementById('db-timer');
+  const already = document.getElementById('db-already');
+
+  if (hasEnough) {
+    claimBtn.style.display = 'none';
+    timer.style.display = 'none';
+    already.style.display = 'block';
+    note.textContent = "You're fully stocked — no top-up needed right now.";
+  } else if (!ready) {
+    const remaining = cooldown - elapsed;
+    const h = Math.floor(remaining/3600000);
+    const m = Math.floor((remaining%3600000)/60000);
+    document.getElementById('db-countdown').textContent = `${h}h ${m}m`;
+    claimBtn.disabled = true;
+    claimBtn.textContent = '⏳ Not Yet Available';
+    already.style.display = 'none';
+    note.textContent = "You already claimed today's bonus. Come back soon!";
+  } else {
+    claimBtn.disabled = false;
+    claimBtn.textContent = '🎉 Claim Free $20';
+    already.style.display = 'none';
+    note.textContent = "Your balance is below $20 — claim your free daily top-up!";
+  }
+  showScreen('daily');
+}
+
+document.getElementById('db-claim-btn').onclick = () => {
+  const now = Date.now();
+  const elapsed = now - lastDailyBonus;
+  const cooldown = 24*60*60*1000;
+  if (elapsed < cooldown || balance >= 20) return;
+  balance = 20;
+  lastDailyBonus = now;
+  localStorage.setItem('lastDailyBonus', now.toString());
+  updateBalance();
+  saveState();
+  haptic('win');
+  playWin(20);
+  showScreen('game');
+};
+
+document.getElementById('db-back').onclick = () => showScreen('game');
+
+/* ══════════════════════════════════════════════
+   AD GATE LOGIC
+   ══════════════════════════════════════════════ */
+document.getElementById('ag-watch-btn').onclick = () => {
+  // Simulate ad watch (replace with real AdSense/AdMob call after approval)
+  const btn = document.getElementById('ag-watch-btn');
+  btn.textContent = '⏳ Loading ad...';
+  btn.disabled = true;
+  setTimeout(() => {
+    // Ad "watched" — reward player
+    balance = 20;
+    updateBalance();
+    saveState();
+    haptic('win');
+    playWin(20);
+    btn.textContent = '▶  Watch Ad — Get $20';
+    btn.disabled = false;
+    bets = {};
+    setResult('Reloaded! Place your bets.', 'res-win');
+    showScreen('game');
+  }, 2000); // Simulates a 2s ad — replace with real ad callback
+};
+
+document.getElementById('ag-later').onclick = () => showScreen('game');
+
+/* ══════════════════════════════════════════════
+   SETTINGS
+   ══════════════════════════════════════════════ */
+document.querySelectorAll('.tog').forEach(tog => {
+  tog.onclick = () => {
+    const key = tog.dataset.key;
+    settings[key] = !settings[key];
+    tog.className = 'tog ' + (settings[key] ? 'on' : 'off');
+    saveState();
+    haptic('chip');
+  };
+});
+// Sync toggle visuals to saved settings
+function syncToggles() {
+  Object.keys(settings).forEach(k => {
+    const el = document.querySelector(`.tog[data-key="${k}"]`);
+    if (el) el.className = 'tog ' + (settings[k] ? 'on' : 'off');
+  });
+}
+
+document.getElementById('btn-settings').onclick = () => showScreen('settings');
+document.getElementById('btn-settings-back').onclick = () => showScreen('game');
+document.getElementById('btn-daily').onclick = () => openDaily();
+
+document.getElementById('st-history').onclick = () => {
+  buildHistory();
+  showScreen('history');
+};
+document.getElementById('btn-history-back').onclick = () => showScreen('settings');
+
+document.getElementById('st-reset').onclick = () => {
+  balance = 20; bets = {}; updateBalance(); saveState();
+  document.querySelectorAll('.placed').forEach(p => p.remove());
+  setResult('Balance reset to $20.', 'res-neutral');
+  showScreen('game');
+};
+
+/* ══════════════════════════════════════════════
+   SPIN HISTORY
+   ══════════════════════════════════════════════ */
+function buildHistory() {
+  const body = document.getElementById('histBody');
+  if (!spinHistory.length) {
+    body.innerHTML = '<div class="hist-empty"><div>🎲</div><div>No spins yet.<br>Head back and play!</div></div>';
+    return;
+  }
+  body.innerHTML = spinHistory.slice(0, 50).map(h => {
+    const cls = h.color==='Red'?'r':h.color==='Black'?'b':'g';
+    const t = new Date(h.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const netStr = (h.net>=0?'+':'')+h.net;
+    return `<div class="hist-row">
+      <div class="hist-num ${cls}">${h.result}</div>
+      <div class="hist-meta">
+        <div class="hist-bet">${h.color} ${h.result} · bet $${h.bet}</div>
+        <div class="hist-time">${t}</div>
+      </div>
+      <div class="hist-net ${h.net>=0?'pos':'neg'}">${netStr}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════
+   ONBOARDING
+   ══════════════════════════════════════════════ */
+document.getElementById('ob-start').onclick = () => {
+  localStorage.setItem('hasOnboarded', '1');
+  showScreen('game');
+  // Init audio context on first user gesture
+  try { getAudio(); } catch(e) {}
+};
+
+/* ══════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════ */
+function boot() {
+  const hasOnboarded = localStorage.getItem('hasOnboarded');
+  updateBalance();
+  syncToggles();
+  initWheel();
+  buildChipBar();
+  buildTable();
+
+  if (hasOnboarded) {
+    showScreen('game');
+  }
+  // else onboarding is already active
+}
+
+// PWA install prompt suppression (just register SW if available)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+boot();
+</script>
+</body>
+</html>
