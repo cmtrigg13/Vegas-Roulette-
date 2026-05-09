@@ -76,8 +76,8 @@ button{font-family:Arial,Helvetica,sans-serif;cursor:pointer;border:none;outline
 .num-black{background:linear-gradient(135deg,#1c1c2e,#0e0e16);}
 .num-green{background:linear-gradient(135deg,#145e32,#0a3c20);}
 .outside{background:linear-gradient(135deg,#0e0e24,#090918);color:#5050a0;}
-.bet-zone{position:absolute;z-index:10;cursor:pointer;width:11px;height:11px;display:flex;align-items:center;justify-content:center;}
-.bz-dot{width:7px;height:7px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.5);opacity:0;transform:scale(0.4);transition:opacity .15s,transform .15s;background:rgba(160,160,255,0.35);}
+.bet-zone{position:absolute;z-index:30;cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
+.bz-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.5);opacity:0;transform:scale(0.4);transition:opacity .15s,transform .15s;background:rgba(160,160,255,0.35);}
 .bet-zone:hover .bz-dot,.bet-zone:active .bz-dot{opacity:1;transform:scale(1);}
 .placed{position:absolute;z-index:20;pointer-events:none;}
 
@@ -840,6 +840,14 @@ function pChipSVG(ch,cw,ch2,amount){
 
 function getChip(){return CHIPS.find(c=>c.val===selChip);}
 
+/* Returns the chip whose color matches the stacked total —
+   highest denomination that is <= amount, so $7 shows red ($5 tier),
+   $23 shows blue ($20 tier), etc. Falls back to lowest chip. */
+function chipForAmount(amount){
+  const sorted=[...CHIPS].sort((a,b)=>b.val-a.val);
+  return sorted.find(c=>c.val<=amount)||CHIPS[0];
+}
+
 function buildChipBar(){
   const bar=document.getElementById('chipBar');bar.innerHTML='';
   if(selChip>balance){const b=CHIPS.slice().reverse().find(c=>c.val<=balance);if(b)selChip=b.val;}
@@ -866,11 +874,11 @@ function placeBet(key,x,y,cw,ch2,tbl){
   if(bets[key]){
     bets[key].amount+=selChip;
     const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
-    if(el){const {sz,svg}=pChipSVG(chip,cw,ch2,bets[key].amount);el.innerHTML=svg;}
+    if(el){const {sz,svg}=pChipSVG(chipForAmount(bets[key].amount),cw,ch2,bets[key].amount);el.innerHTML=svg;}
     updateBalance();return;
   }
   bets[key]={amount:selChip,chip};
-  const {sz,svg}=pChipSVG(chip,cw,ch2,selChip);
+  const {sz,svg}=pChipSVG(chipForAmount(selChip),cw,ch2,selChip);
   const div=document.createElement('div');div.className='placed';div.dataset.bk=key;
   div.style.cssText=`left:${x-sz/2}px;top:${y-sz/2}px;width:${sz}px;height:${sz}px;`;
   div.innerHTML=svg;tbl.appendChild(div);
@@ -890,14 +898,10 @@ function removeLastBet(){
     const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
     if(el)el.remove();
   } else {
-    // Re-render using the chip color from the previous (now top) history entry for this key
-    // Find the most recent history entry for this key to get correct chip color
-    const prevEntry=[...betHistory].reverse().find(h=>h.key===key);
-    const chipToShow=prevEntry?prevEntry.chip:(bets[key].chip||getChip());
     const tbl=document.getElementById('rt2');
     const el=tbl.querySelector(`[data-bk="${CSS.escape(key)}"]`);
     if(el){
-      const {sz,svg}=pChipSVG(chipToShow,cw,ch2,bets[key].amount);
+      const {sz,svg}=pChipSVG(chipForAmount(bets[key].amount),cw,ch2,bets[key].amount);
       el.innerHTML=svg;
     }
   }
@@ -958,7 +962,7 @@ function buildTable(){
 
   // Bet zones
   function zone(key,x,y){
-    const bz=document.createElement('div');bz.className='bet-zone';bz.style.cssText=`left:${x-5}px;top:${y-5}px;`;
+    const bz=document.createElement('div');bz.className='bet-zone';bz.style.cssText=`left:${x-14}px;top:${y-14}px;`;
     const dot=document.createElement('div');dot.className='bz-dot';bz.appendChild(dot);
     bz.onclick=e=>{e.stopPropagation();placeBet(key,x,y,cW,numH,tbl);};tbl.appendChild(bz);
   }
