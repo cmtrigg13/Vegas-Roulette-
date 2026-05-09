@@ -494,7 +494,7 @@ let settings=JSON.parse(localStorage.getItem('vr_settings')||'{"sfx":true,"hapti
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
 
 /* ── PERSIST ── */
-function save(){localStorage.setItem('vr_balance',balance);localStorage.setItem('vr_history',JSON.stringify(spinHistory.slice(0,100)));localStorage.setItem('vr_settings',JSON.stringify(settings));}
+function save(){localStorage.setItem('vr_history',JSON.stringify(spinHistory.slice(0,100)));localStorage.setItem('vr_settings',JSON.stringify(settings));}
 
 /* ── AUDIO (Web Audio API — no files needed) ── */
 let audioCtx=null;
@@ -999,6 +999,7 @@ function buildHistory(){
 document.getElementById('ob-start').onclick=()=>{localStorage.setItem('vr_onboarded','1');showScreen('game');try{getAudio();}catch(e){}};
 
 function boot(){
+  localStorage.removeItem('vr_balance'); // always start fresh at $20
   updateBalance();syncToggles();
   initSmWheel();buildChipBar();
   setTimeout(()=>buildTable(),60);
